@@ -26,6 +26,7 @@ try {
     die("Erreur DB: " . $e->getMessage());
 }
 
+// On récupère tous les joueurs suisses
 $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!doctype html>
@@ -86,9 +87,12 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
                  alt="${p.name}" 
                  style="width:60px; height:60px; object-fit:cover; border-radius:5px; margin-right:8px;">
             <div>
-              <b>${p.name}</b><br>
+              <b>${p.name}</b> (#${p.jersey_number || "?"})<br>
               ${p.team || "?"} (${p.position || "?"})<br>
-              Ligue: ${p.league || "?"}
+              Ligue: ${p.league || "?"}<br>
+              Taille: ${p.height_cm || "?"} cm, Poids: ${p.weight_kg || "?"} kg<br>
+              Main dominante: ${p.shoots_catches || "?"}<br>
+              Naissance: ${p.birthdate || "?"} à ${p.birth_place || "?"}
             </div>
           </div>
         `;
@@ -103,11 +107,13 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
       div.innerHTML = `
         <img src="${p.photo_url || 'https://via.placeholder.com/300x180?text=No+Image'}" alt="${p.name}">
         <div class="player-body">
-          <h3>${p.name}</h3>
-          <p><strong>Équipe:</strong> ${p.team || "?"}</p>
+          <h3>${p.name} (#${p.jersey_number || "?"})</h3>
+          <p><strong>Équipe:</strong> ${p.team || "?"} (${p.team_city || "?"})</p>
           <p><strong>Ligue:</strong> ${p.league || "?"}</p>
           <p><strong>Position:</strong> ${p.position || "?"}</p>
           <p><strong>Naissance:</strong> ${p.birthdate || "?"} à ${p.birth_place || "?"}</p>
+          <p><strong>Taille / Poids:</strong> ${p.height_cm || "?"} cm / ${p.weight_kg || "?"} kg</p>
+          <p><strong>Main dominante:</strong> ${p.shoots_catches || "?"}</p>
         </div>
       `;
       list.appendChild(div);
