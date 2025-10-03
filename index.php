@@ -2,7 +2,7 @@
 // --- Fonction pour charger .env ---
 function loadEnv($path) {
     if (!file_exists($path)) return;
-    $lines = file($path, FILE_IGNORE_EMPTY_LINES | FILE_SKIP_EMPTY_LINES);
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         if (strpos(trim($line), '#') === 0) continue;
         list($name, $value) = explode("=", $line, 2);
@@ -50,8 +50,6 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
     .player-body h3 { margin:0 0 5px; font-size:1.1rem; color:#0b3d91; }
     .player-body p { margin:3px 0; font-size:0.9rem; color:#333; }
     @media(max-width:600px){#list{grid-template-columns:1fr}}
-    .popup-content img { width:80px; height:80px; object-fit:cover; float:left; margin-right:8px; border-radius:5px; }
-    .popup-content div { overflow:hidden; }
   </style>
 </head>
 <body>
@@ -74,13 +72,19 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
 
     const markers = L.markerClusterGroup();
     const list = document.getElementById('list');
+    const bounds = [];
 
     players.forEach(p => {
-      // Ajout marqueur avec image dans popup
-      if (p.lat && p.lng) {
+      const lat = parseFloat(p.lat);
+      const lng = parseFloat(p.lng);
+
+      // Marqueur si lat/lng valides
+      if (!isNaN(lat) && !isNaN(lng)) {
         const popupHTML = `
-          <div class="popup-content">
-            <img src="${p.photo_url || 'https://via.placeholder.com/80x80?text=No+Image'}" alt="${p.name}">
+          <div style="display:flex; align-items:center;">
+            <img src="${p.photo_url || 'https://via.placeholder.com/60'}" 
+                 alt="${p.name}" 
+                 style="width:60px; height:60px; object-fit:cover; border-radius:5px; margin-right:8px;">
             <div>
               <b>${p.name}</b><br>
               ${p.team || "?"} (${p.position || "?"})<br>
@@ -88,11 +92,12 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
             </div>
           </div>
         `;
-        const marker = L.marker([p.lat, p.lng]).bindPopup(popupHTML);
+        const marker = L.marker([lat, lng]).bindPopup(popupHTML);
         markers.addLayer(marker);
+        bounds.push([lat, lng]);
       }
 
-      // Carte joueur en dessous
+      // Carte joueur dans la liste
       const div = document.createElement('div');
       div.className = 'player-card';
       div.innerHTML = `
@@ -109,6 +114,11 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
     });
 
     map.addLayer(markers);
+
+    // Zoom automatique sur tous les marqueurs
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, {padding:[50,50]});
+    }
   </script>
 </body>
 </html>
