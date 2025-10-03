@@ -12,7 +12,7 @@ function loadEnv($path) {
 
 // Charger le .env
 loadEnv(__DIR__ . "/.env");
-echo($_ENV);
+
 // Variables DB depuis .env
 $host = $_ENV["DB_HOST"];
 $db   = $_ENV["DB_NAME"];
@@ -29,12 +29,13 @@ try {
     die("Erreur DB: " . $e->getMessage());
 }
 
-// Table enrichie
+// Création table si inexistante
 $pdo->exec("CREATE TABLE IF NOT EXISTS players (
     id INT AUTO_INCREMENT PRIMARY KEY,
     external_id VARCHAR(50),
     name VARCHAR(100),
     team VARCHAR(100),
+    league VARCHAR(100),
     nationality VARCHAR(100),
     position VARCHAR(50),
     birthdate DATE NULL,
@@ -45,57 +46,44 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS players (
     lng DECIMAL(10,6) NULL
 )");
 
-// Vérifie si table vide → importe depuis API
-$count = $pdo->query("SELECT COUNT(*) FROM players")->fetchColumn();
-if ($count == 0) {
-    $names = ["Nico Hischier", "Roman Josi", "Kevin Fiala"];
-    foreach ($names as $name) {
-        $url = "https://www.thesportsdb.com/api/v1/json/1/searchplayers.php?p=" . urlencode($name);
-        $json = json_decode(file_get_contents($url), true);
-
-        if (!empty($json["player"][0])) {
-            $p = $json["player"][0];
-            $stmt = $pdo->prepare("INSERT INTO players 
-                (external_id, name, team, nationality, position, birthdate, birth_place, description, photo_url, lat, lng)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?)");
-            $stmt->execute([
-                $p["idPlayer"], $p["strPlayer"], $p["strTeam"], $p["strNationality"],
-                $p["strPosition"], $p["dateBorn"], $p["strBirthLocation"], $p["strDescriptionEN"],
-                $p["strThumb"], null, null
-            ]);
-        }
-    }
-}
-
 // Récupération joueurs
-$players = $pdo->query("SELECT * FROM players")->fetchAll(PDO::FETCH_ASSOC);
+$players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8"/>
-  <title>Swiss Hockey Map (API + .env)</title>
+  <title>Swiss Hockey Map</title>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
-    body { margin:0; font-family: Arial, sans-serif; }
-    header { background:#0b3d91; color:#fff; padding:10px; }
-    #map { height:70vh; width:100%; }
-    #list { padding:10px; }
-    .player { margin:10px 0; border-bottom:1px solid #ccc; padding-bottom:8px; }
-    .player img { max-width:100px; float:left; margin-right:10px; }
+    body { margin:0; font-family: Arial, sans-serif; background:#f4f4f9; }
+    header { background:#0b3d91; color:#fff; padding:15px 10px; text-align:center; }
+    header h1 { margin:0; font-size:2rem; }
+    #map { height:60vh; width:100%; }
+    #list { padding:20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px; }
+    .player-card { background:#fff; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.1); overflow:hidden; transition:transform 0.2s; }
+    .player-card:hover { transform:translateY(-5px); }
+    .player-card img { width:100%; height:180px; object-fit:cover; background:#ddd; }
+    .player-body { padding:10px; }
+    .player-body h3 { margin:0 0 5px; font-size:1.1rem; color:#0b3d91; }
+    .player-body p { margin:3px 0; font-size:0.9rem; color:#333; }
+    @media(max-width:600px){#list{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <header><h1>Swiss Hockey Map (via API)</h1></header>
+  <header>
+    <h1>Joueurs Suisses à l'Étranger</h1>
+    <p>Liste mise à jour depuis la base de données</p>
+  </header>
   <div id="map"></div>
-  <div id="list"><h3>Joueurs</h3></div>
+  <div id="list"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    const players = <?php echo json_encode($players, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT); ?>;
+    const players = <?= json_encode($players, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT); ?>;
 
-    const map = L.map('map').setView([46.8, 8.2], 4);
+    const map = L.map('map').setView([46.8,8.2],4);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
@@ -103,19 +91,24 @@ $players = $pdo->query("SELECT * FROM players")->fetchAll(PDO::FETCH_ASSOC);
     const list = document.getElementById('list');
 
     players.forEach(p => {
+      // Ajout marqueur sur la carte si lat/lng disponibles
       if (p.lat && p.lng) {
         const marker = L.marker([p.lat, p.lng]).addTo(map);
-        marker.bindPopup(`<b>${p.name}</b><br>${p.team} (${p.position})`);
+        marker.bindPopup(`<b>${p.name}</b><br>${p.team || "?"} (${p.position || "?"})`);
       }
+
+      // Création carte joueur
       const div = document.createElement('div');
-      div.className = 'player';
+      div.className = 'player-card';
       div.innerHTML = `
-        ${p.photo_url ? `<img src="${p.photo_url}" alt="${p.name}"/>` : ""}
-        <strong>${p.name}</strong> — ${p.team || "?"} (${p.position || "?"})<br/>
-        Nationalité: ${p.nationality}<br/>
-        Né le: ${p.birthdate || "?"} à ${p.birth_place || "?"}<br/>
-        <p>${p.description ? p.description.substring(0,200)+"..." : ""}</p>
-        <div style="clear:both"></div>
+        <img src="${p.photo_url || 'https://via.placeholder.com/300x180?text=No+Image'}" alt="${p.name}">
+        <div class="player-body">
+          <h3>${p.name}</h3>
+          <p><strong>Équipe:</strong> ${p.team || "?"}</p>
+          <p><strong>Ligue:</strong> ${p.league || "?"}</p>
+          <p><strong>Position:</strong> ${p.position || "?"}</p>
+          <p><strong>Naissance:</strong> ${p.birthdate || "?"} à ${p.birth_place || "?"}</p>
+        </div>
       `;
       list.appendChild(div);
     });
