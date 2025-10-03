@@ -2,7 +2,7 @@
 // --- Fonction pour charger .env ---
 function loadEnv($path) {
     if (!file_exists($path)) return;
-    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    $lines = file($path, FILE_IGNORE_EMPTY_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         if (strpos(trim($line), '#') === 0) continue;
         list($name, $value) = explode("=", $line, 2);
@@ -10,16 +10,13 @@ function loadEnv($path) {
     }
 }
 
-// Charger le .env
 loadEnv(__DIR__ . "/.env");
 
-// Variables DB depuis .env
 $host = $_ENV["DB_HOST"];
 $db   = $_ENV["DB_NAME"];
 $user = $_ENV["DB_USER"];
 $pass = $_ENV["DB_PASS"];
 
-// Connexion PDO
 $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 try {
     $pdo = new PDO($dsn, $user, $pass, [
@@ -29,7 +26,6 @@ try {
     die("Erreur DB: " . $e->getMessage());
 }
 
-// Récupération joueurs
 $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!doctype html>
@@ -54,8 +50,8 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
     .player-body h3 { margin:0 0 5px; font-size:1.1rem; color:#0b3d91; }
     .player-body p { margin:3px 0; font-size:0.9rem; color:#333; }
     @media(max-width:600px){#list{grid-template-columns:1fr}}
-    .popup-player img { width:100px; height:100px; object-fit:cover; float:left; margin-right:8px; border-radius:5px; }
-    .popup-player div { overflow:hidden; }
+    .popup-content img { width:80px; height:80px; object-fit:cover; float:left; margin-right:8px; border-radius:5px; }
+    .popup-content div { overflow:hidden; }
   </style>
 </head>
 <body>
@@ -76,17 +72,15 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Création du cluster
     const markers = L.markerClusterGroup();
-
     const list = document.getElementById('list');
 
     players.forEach(p => {
-      // Ajout marqueur sur la carte si lat/lng disponibles
+      // Ajout marqueur avec image dans popup
       if (p.lat && p.lng) {
-        const popupContent = `
-          <div class="popup-player">
-            <img src="${p.photo_url || 'https://via.placeholder.com/100x100?text=No+Image'}" alt="${p.name}">
+        const popupHTML = `
+          <div class="popup-content">
+            <img src="${p.photo_url || 'https://via.placeholder.com/80x80?text=No+Image'}" alt="${p.name}">
             <div>
               <b>${p.name}</b><br>
               ${p.team || "?"} (${p.position || "?"})<br>
@@ -94,11 +88,11 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
             </div>
           </div>
         `;
-        const marker = L.marker([p.lat, p.lng]).bindPopup(popupContent);
+        const marker = L.marker([p.lat, p.lng]).bindPopup(popupHTML);
         markers.addLayer(marker);
       }
 
-      // Création carte joueur
+      // Carte joueur en dessous
       const div = document.createElement('div');
       div.className = 'player-card';
       div.innerHTML = `
