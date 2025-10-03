@@ -12,7 +12,7 @@ function loadEnv($path) {
 
 // Charger le .env
 loadEnv(__DIR__ . "/.env");
-
+dd($_ENV);
 // Variables DB depuis .env
 $host = $_ENV["DB_HOST"];
 $db   = $_ENV["DB_NAME"];
