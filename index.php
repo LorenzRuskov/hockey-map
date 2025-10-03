@@ -4,7 +4,7 @@ function loadEnv($path) {
     if (!file_exists($path)) return;
     $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue; // commentaire
+        if (strpos(trim($line), '#') === 0) continue;
         list($name, $value) = explode("=", $line, 2);
         $_ENV[trim($name)] = trim($value);
     }
@@ -39,6 +39,8 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
   <title>Swiss Hockey Map</title>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
   <style>
     body { margin:0; font-family: Arial, sans-serif; background:#f4f4f9; }
     header { background:#0b3d91; color:#fff; padding:15px 10px; text-align:center; }
@@ -52,6 +54,8 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
     .player-body h3 { margin:0 0 5px; font-size:1.1rem; color:#0b3d91; }
     .player-body p { margin:3px 0; font-size:0.9rem; color:#333; }
     @media(max-width:600px){#list{grid-template-columns:1fr}}
+    .popup-player img { width:100px; height:100px; object-fit:cover; float:left; margin-right:8px; border-radius:5px; }
+    .popup-player div { overflow:hidden; }
   </style>
 </head>
 <body>
@@ -63,6 +67,7 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
   <div id="list"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
   <script>
     const players = <?= json_encode($players, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT); ?>;
 
@@ -71,17 +76,26 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
+    // Création du cluster
+    const markers = L.markerClusterGroup();
+
     const list = document.getElementById('list');
 
     players.forEach(p => {
       // Ajout marqueur sur la carte si lat/lng disponibles
       if (p.lat && p.lng) {
-        const marker = L.marker([p.lat, p.lng]).addTo(map);
-        marker.bindPopup(`
-          <b>${p.name}</b><br>
-          ${p.team || "?"} (${p.position || "?"})<br>
-          Ligue: ${p.league || "?"}
-        `);
+        const popupContent = `
+          <div class="popup-player">
+            <img src="${p.photo_url || 'https://via.placeholder.com/100x100?text=No+Image'}" alt="${p.name}">
+            <div>
+              <b>${p.name}</b><br>
+              ${p.team || "?"} (${p.position || "?"})<br>
+              Ligue: ${p.league || "?"}
+            </div>
+          </div>
+        `;
+        const marker = L.marker([p.lat, p.lng]).bindPopup(popupContent);
+        markers.addLayer(marker);
       }
 
       // Création carte joueur
@@ -99,6 +113,8 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
       `;
       list.appendChild(div);
     });
+
+    map.addLayer(markers);
   </script>
 </body>
 </html>
