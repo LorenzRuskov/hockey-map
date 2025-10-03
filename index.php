@@ -1,14 +1,26 @@
 <?php
-// --- PHP PART ---
-header("Content-Type: text/html; charset=utf-8");
+// --- Fonction pour charger .env ---
+function loadEnv($path) {
+    if (!file_exists($path)) return;
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue; // commentaire
+        list($name, $value) = explode("=", $line, 2);
+        $_ENV[trim($name)] = trim($value);
+    }
+}
 
-// Connexion MySQL
-$host = "127.0.0.1";
-$db   = "povt0830_lrz";
-$user = "povt0830_lrz";
-$pass = "TON_MOT_DE_PASSE"; // ⚠️ à remplacer
+// Charger le .env
+loadEnv(__DIR__ . "/.env");
+
+// Variables DB depuis .env
+$host = $_ENV["DB_HOST"];
+$db   = $_ENV["DB_NAME"];
+$user = $_ENV["DB_USER"];
+$pass = $_ENV["DB_PASS"];
+
+// Connexion PDO
 $dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
-
 try {
     $pdo = new PDO($dsn, $user, $pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
@@ -17,7 +29,7 @@ try {
     die("Erreur DB: " . $e->getMessage());
 }
 
-// Table "players" enrichie
+// Table enrichie
 $pdo->exec("CREATE TABLE IF NOT EXISTS players (
     id INT AUTO_INCREMENT PRIMARY KEY,
     external_id VARCHAR(50),
@@ -33,7 +45,7 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS players (
     lng DECIMAL(10,6) NULL
 )");
 
-// Si table vide → importer depuis TheSportsDB
+// Vérifie si table vide → importe depuis API
 $count = $pdo->query("SELECT COUNT(*) FROM players")->fetchColumn();
 if ($count == 0) {
     $names = ["Nico Hischier", "Roman Josi", "Kevin Fiala"];
@@ -55,14 +67,14 @@ if ($count == 0) {
     }
 }
 
-// Récupérer tous les joueurs
+// Récupération joueurs
 $players = $pdo->query("SELECT * FROM players")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8"/>
-  <title>Swiss Hockey Map (API)</title>
+  <title>Swiss Hockey Map (API + .env)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
@@ -91,12 +103,10 @@ $players = $pdo->query("SELECT * FROM players")->fetchAll(PDO::FETCH_ASSOC);
     const list = document.getElementById('list');
 
     players.forEach(p => {
-      // 📌 Ici lat/lng sont null → il faudrait géocoder birth_place (optionnel)
       if (p.lat && p.lng) {
         const marker = L.marker([p.lat, p.lng]).addTo(map);
         marker.bindPopup(`<b>${p.name}</b><br>${p.team} (${p.position})`);
       }
-
       const div = document.createElement('div');
       div.className = 'player';
       div.innerHTML = `
