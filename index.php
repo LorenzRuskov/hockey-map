@@ -1,18 +1,16 @@
 <?php
-// --- Fonction pour charger .env ---
+// --- Charger le .env ---
 function loadEnv($path) {
     if (!file_exists($path)) return;
     $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue; // commentaire
+        if (strpos(trim($line), '#') === 0) continue;
         list($name, $value) = explode("=", $line, 2);
         $_ENV[trim($name)] = trim($value);
     }
 }
-
-// Charger le .env
 loadEnv(__DIR__ . "/.env");
-print_r($_ENV);
+
 // Variables DB depuis .env
 $host = $_ENV["DB_HOST"];
 $db   = $_ENV["DB_NAME"];
@@ -20,9 +18,8 @@ $user = $_ENV["DB_USER"];
 $pass = $_ENV["DB_PASS"];
 
 // Connexion PDO
-$dsn = "mysql:host=$host;dbname=$db;charset=utf8mb4";
 try {
-    $pdo = new PDO($dsn, $user, $pass, [
+    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
     ]);
 } catch (Exception $e) {
@@ -32,7 +29,7 @@ try {
 // Création table si inexistante
 $pdo->exec("CREATE TABLE IF NOT EXISTS players (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    external_id VARCHAR(50),
+    external_id VARCHAR(50) UNIQUE,
     name VARCHAR(100),
     team VARCHAR(100),
     league VARCHAR(100),
@@ -44,7 +41,7 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS players (
     photo_url VARCHAR(255),
     lat DECIMAL(10,6) NULL,
     lng DECIMAL(10,6) NULL
-)");
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
 // Récupération joueurs
 $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
@@ -58,7 +55,7 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <style>
     body { margin:0; font-family: Arial, sans-serif; background:#f4f4f9; }
-    header { background:#0b3d91; color:#fff; padding:15px 10px; text-align:center; }
+    header { background:#0b3d91; color:#fff; padding:15px; text-align:center; }
     header h1 { margin:0; font-size:2rem; }
     #map { height:60vh; width:100%; }
     #list { padding:20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px; }
@@ -74,8 +71,9 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
 <body>
   <header>
     <h1>Joueurs Suisses à l'Étranger</h1>
-    <p>Liste mise à jour depuis la base de données</p>
+    <p>Visualisation des joueurs avec leurs équipes et positions</p>
   </header>
+
   <div id="map"></div>
   <div id="list"></div>
 
@@ -91,13 +89,18 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
     const list = document.getElementById('list');
 
     players.forEach(p => {
-      // Ajout marqueur sur la carte si lat/lng disponibles
+      // Marqueur carte si coordonnées disponibles
       if (p.lat && p.lng) {
         const marker = L.marker([p.lat, p.lng]).addTo(map);
-        marker.bindPopup(`<b>${p.name}</b><br>${p.team || "?"} (${p.position || "?"})`);
+        marker.bindPopup(`
+          <b>${p.name}</b><br>
+          ${p.team || "?"} (${p.league || "?"})<br>
+          ${p.position || "?"}<br>
+          ${p.birthdate || "?"} à ${p.birth_place || "?"}
+        `);
       }
 
-      // Création carte joueur
+      // Carte joueur
       const div = document.createElement('div');
       div.className = 'player-card';
       div.innerHTML = `
@@ -108,6 +111,7 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
           <p><strong>Ligue:</strong> ${p.league || "?"}</p>
           <p><strong>Position:</strong> ${p.position || "?"}</p>
           <p><strong>Naissance:</strong> ${p.birthdate || "?"} à ${p.birth_place || "?"}</p>
+          <p><strong>Coordonnées:</strong> ${p.lat || "?"}, ${p.lng || "?"}</p>
         </div>
       `;
       list.appendChild(div);
