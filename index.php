@@ -26,7 +26,7 @@ try {
     die("Erreur DB: " . $e->getMessage());
 }
 
-// Récupération des joueurs suisses
+// On récupère tous les joueurs suisses
 $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!doctype html>
@@ -58,7 +58,6 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
     <h1>Joueurs Suisses à l'Étranger</h1>
     <p>Liste mise à jour depuis la base de données</p>
   </header>
-
   <div id="map"></div>
   <div id="list"></div>
 
@@ -67,7 +66,7 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
   <script>
     const players = <?= json_encode($players, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT); ?>;
 
-    const map = L.map('map').setView([46.8,8.2], 4);
+    const map = L.map('map').setView([46.8,8.2],4);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
@@ -80,12 +79,12 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
       const lat = parseFloat(p.lat);
       const lng = parseFloat(p.lng);
 
-      // Popup si lat/lng valides
+      // Marqueur si lat/lng valides
       if (!isNaN(lat) && !isNaN(lng)) {
         const popupHTML = `
           <div style="display:flex; align-items:center;">
             <img src="${p.photo_url || 'https://via.placeholder.com/60'}" 
-                 alt="${p.name || '?'}" 
+                 alt="${p.name}" 
                  style="width:60px; height:60px; object-fit:cover; border-radius:5px; margin-right:8px;">
             <div>
               <b>${p.name || '?'}</b> (#${p.jersey_number || '?'})<br>
@@ -106,10 +105,10 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
       const div = document.createElement('div');
       div.className = 'player-card';
       div.innerHTML = `
-        <img src="${p.photo_url || 'https://via.placeholder.com/300x180?text=No+Image'}" alt="${p.name || '?'}">
+        <img src="${p.photo_url || 'https://via.placeholder.com/300x180?text=No+Image'}" alt="${p.name}">
         <div class="player-body">
           <h3>${p.name || '?'} (#${p.jersey_number || '?'})</h3>
-          <p><strong>Équipe:</strong> ${p.team || '?'} (${p.team_city || '?'})</p>
+          <p><strong>Équipe:</strong> ${p.team || '?'}</p>
           <p><strong>Ligue:</strong> ${p.league || '?'}</p>
           <p><strong>Position:</strong> ${p.position || '?'}</p>
           <p><strong>Naissance:</strong> ${p.birthdate || '?'} à ${p.birth_place || '?'}</p>
