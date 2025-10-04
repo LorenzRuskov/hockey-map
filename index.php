@@ -15,8 +15,15 @@ try {
     die("Erreur DB: " . $e->getMessage());
 }
 
-// On récupère tous les joueurs suisses
-$players = $pdo->query("SELECT full_name, team_name, team_city, jersey_number, primary_position_name, league, birthdate, birth_place, birth_country, height_cm, weight_kg, shoots_catches, headshot_url, lat, lng FROM players WHERE nationality='CHE' ORDER BY full_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+// Tous les joueurs suisses
+$players = $pdo->query("
+    SELECT full_name, team_name, team_city, jersey_number, primary_position_name, league,
+           birthdate, birth_place, birth_country, height_cm, weight_kg, shoots_catches,
+           headshot_url, lat, lng
+    FROM players
+    WHERE nationality='CHE'
+    ORDER BY full_name ASC
+")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!doctype html>
 <html lang="fr">
@@ -28,25 +35,35 @@ $players = $pdo->query("SELECT full_name, team_name, team_city, jersey_number, p
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
   <style>
-    body { margin:0; font-family: Arial, sans-serif; background:#f4f4f9; }
-    header { background:#0b3d91; color:#fff; padding:15px 10px; text-align:center; }
-    header h1 { margin:0; font-size:2rem; }
+    body { margin:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f0f2f5; }
+    header { background:#1d1d2c; color:#fff; padding:20px; text-align:center; }
+    header h1 { margin:0; font-size:2.2rem; letter-spacing:1px; }
+    header p { margin:5px 0 0; font-size:0.9rem; color:#ccc; }
+
     #map { height:60vh; width:100%; }
-    #list { padding:20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px; }
-    .player-card { background:#fff; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.1); overflow:hidden; transition:transform 0.2s; }
-    .player-card:hover { transform:translateY(-5px); }
-    .player-card img { width:100%; height:180px; object-fit:cover; background:#ddd; }
-    .player-body { padding:10px; }
-    .player-body h3 { margin:0 0 5px; font-size:1.1rem; color:#0b3d91; }
-    .player-body p { margin:3px 0; font-size:0.9rem; color:#333; }
+    #list { padding:20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:20px; }
+
+    .player-card { background:#fff; border-radius:15px; box-shadow:0 8px 20px rgba(0,0,0,0.1); overflow:hidden; transition:transform 0.3s, box-shadow 0.3s; }
+    .player-card:hover { transform:translateY(-8px); box-shadow:0 12px 30px rgba(0,0,0,0.15); }
+
+    .player-card img { width:100%; height:200px; object-fit:cover; background:#ddd; transition:transform 0.3s; }
+    .player-card img:hover { transform:scale(1.05); }
+
+    .player-body { padding:15px; }
+    .player-body h3 { margin:0 0 8px; font-size:1.2rem; color:#1d1d2c; }
+    .player-body p { margin:4px 0; font-size:0.9rem; color:#555; line-height:1.3; }
+
+    .player-body p span { font-weight:600; color:#1d1d2c; }
+
     @media(max-width:600px){#list{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
   <header>
     <h1>Joueurs Suisses à l'Étranger</h1>
-    <p>Liste mise à jour depuis la base de données</p>
+    <p>Visualisez les joueurs suisses et leurs équipes dans le monde</p>
   </header>
+
   <div id="map"></div>
   <div id="list"></div>
 
@@ -70,18 +87,16 @@ $players = $pdo->query("SELECT full_name, team_name, team_city, jersey_number, p
 
       if (!isNaN(lat) && !isNaN(lng)) {
         const popupHTML = `
-          <div style="display:flex; align-items:center;">
+          <div style="display:flex; align-items:center; gap:10px;">
             <img src="${p.headshot_url || 'https://via.placeholder.com/60'}" 
                  alt="${p.full_name || '?'}" 
-                 style="width:60px; height:60px; object-fit:cover; border-radius:5px; margin-right:8px;">
+                 style="width:60px; height:60px; object-fit:cover; border-radius:10px;">
             <div>
               <b>${p.full_name || '?'}</b> (#${p.jersey_number || '?'})<br>
-              Équipe: ${p.team_name || '?'} (${p.team_city || '?'})<br>
-              Position: ${p.primary_position_name || '?'}<br>
-              Ligue: ${p.league || '?'}<br>
-              Naissance: ${p.birthdate || '?'} à ${p.birth_place || '?'} (${p.birth_country || '?'})<br>
-              Taille: ${p.height_cm || '?'} cm, Poids: ${p.weight_kg || '?'} kg<br>
-              Main dominante: ${p.shoots_catches || '?'}
+              ${p.team_name || '?'} (${p.team_city || '?'})<br>
+              ${p.primary_position_name || '?'} | ${p.league || '?'}<br>
+              Né le ${p.birthdate || '?'} à ${p.birth_place || '?'} (${p.birth_country || '?'})<br>
+              ${p.height_cm || '?'} cm / ${p.weight_kg || '?'} kg | Main: ${p.shoots_catches || '?'}
             </div>
           </div>
         `;
@@ -96,13 +111,13 @@ $players = $pdo->query("SELECT full_name, team_name, team_city, jersey_number, p
         <img src="${p.headshot_url || 'https://via.placeholder.com/300x180?text=No+Image'}" alt="${p.full_name || '?'}">
         <div class="player-body">
           <h3>${p.full_name || '?'}</h3>
-          <p><strong>Numéro:</strong> ${p.jersey_number || '?'}</p>
-          <p><strong>Équipe:</strong> ${p.team_name || '?'} (${p.team_city || '?'})</p>
-          <p><strong>Ligue:</strong> ${p.league || '?'}</p>
-          <p><strong>Position:</strong> ${p.primary_position_name || '?'}</p>
-          <p><strong>Naissance:</strong> ${p.birthdate || '?'} à ${p.birth_place || '?'} (${p.birth_country || '?'})</p>
-          <p><strong>Taille / Poids:</strong> ${p.height_cm || '?'} cm / ${p.weight_kg || '?'} kg</p>
-          <p><strong>Main dominante:</strong> ${p.shoots_catches || '?'}</p>
+          <p><span>Numéro:</span> ${p.jersey_number || '?'}</p>
+          <p><span>Équipe:</span> ${p.team_name || '?'} (${p.team_city || '?'})</p>
+          <p><span>Ligue:</span> ${p.league || '?'}</p>
+          <p><span>Position:</span> ${p.primary_position_name || '?'}</p>
+          <p><span>Naissance:</span> ${p.birthdate || '?'} à ${p.birth_place || '?'} (${p.birth_country || '?'})</p>
+          <p><span>Taille / Poids:</span> ${p.height_cm || '?'} cm / ${p.weight_kg || '?'} kg</p>
+          <p><span>Main dominante:</span> ${p.shoots_catches || '?'}</p>
         </div>
       `;
       list.appendChild(div);
@@ -111,7 +126,7 @@ $players = $pdo->query("SELECT full_name, team_name, team_city, jersey_number, p
     map.addLayer(markers);
 
     if (bounds.length > 0) {
-      map.fitBounds(bounds, {padding:[50,50]});
+      map.fitBounds(bounds, {padding:[60,60]});
     }
   </script>
 </body>
