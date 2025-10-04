@@ -1,15 +1,4 @@
 <?php
-// --- Fonction pour charger .env ---
-function loadEnv($path) {
-    if (!file_exists($path)) return;
-    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue;
-        list($name, $value) = explode("=", $line, 2);
-        $_ENV[trim($name)] = trim($value);
-    }
-}
-
 loadEnv(__DIR__ . "/.env");
 
 $host = $_ENV["DB_HOST"];
@@ -26,8 +15,8 @@ try {
     die("Erreur DB: " . $e->getMessage());
 }
 
-// Récupérer tous les joueurs suisses
-$players = $pdo->query("SELECT * FROM players WHERE nationality='CHE' ORDER BY full_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+// On récupère tous les joueurs suisses
+$players = $pdo->query("SELECT full_name, team_name, team_city, jersey_number, primary_position_name, league, birthdate, birth_place, birth_country, height_cm, weight_kg, shoots_catches, headshot_url, lat, lng FROM players WHERE nationality='CHE' ORDER BY full_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!doctype html>
 <html lang="fr">
@@ -79,21 +68,20 @@ $players = $pdo->query("SELECT * FROM players WHERE nationality='CHE' ORDER BY f
       const lat = parseFloat(p.lat);
       const lng = parseFloat(p.lng);
 
-      // Marqueur si lat/lng valides
       if (!isNaN(lat) && !isNaN(lng)) {
         const popupHTML = `
           <div style="display:flex; align-items:center;">
-            <img src="${p.headshot_url || p.photo_url || 'https://via.placeholder.com/60'}" 
+            <img src="${p.headshot_url || 'https://via.placeholder.com/60'}" 
                  alt="${p.full_name || '?'}" 
                  style="width:60px; height:60px; object-fit:cover; border-radius:5px; margin-right:8px;">
             <div>
-              <b>${p.full_name || '?'}</b> (#${p.jersey_number || p.sweater_number || p.number || '?'})<br>
-              Équipe: ${p.team_name || p.team || '?'} (${p.team_city || p.city || '?'})<br>
-              Position: ${p.primary_position_name || p.position || '?'}<br>
+              <b>${p.full_name || '?'}</b> (#${p.jersey_number || '?'})<br>
+              Équipe: ${p.team_name || '?'} (${p.team_city || '?'})<br>
+              Position: ${p.primary_position_name || '?'}<br>
               Ligue: ${p.league || '?'}<br>
+              Naissance: ${p.birthdate || '?'} à ${p.birth_place || '?'} (${p.birth_country || '?'})<br>
               Taille: ${p.height_cm || '?'} cm, Poids: ${p.weight_kg || '?'} kg<br>
-              Main dominante: ${p.shoots_catches || '?'}<br>
-              Naissance: ${p.birthdate || '?'} à ${p.birth_place || '?'} (${p.birth_country || '?'})
+              Main dominante: ${p.shoots_catches || '?'}
             </div>
           </div>
         `;
@@ -102,17 +90,16 @@ $players = $pdo->query("SELECT * FROM players WHERE nationality='CHE' ORDER BY f
         bounds.push([lat, lng]);
       }
 
-      // Carte joueur dans la liste
       const div = document.createElement('div');
       div.className = 'player-card';
       div.innerHTML = `
-        <img src="${p.headshot_url || p.photo_url || 'https://via.placeholder.com/300x180?text=No+Image'}" alt="${p.full_name || '?'}">
+        <img src="${p.headshot_url || 'https://via.placeholder.com/300x180?text=No+Image'}" alt="${p.full_name || '?'}">
         <div class="player-body">
           <h3>${p.full_name || '?'}</h3>
-          <p><strong>Numéro:</strong> ${p.jersey_number || p.sweater_number || p.number || '?'}</p>
-          <p><strong>Équipe:</strong> ${p.team_name || p.team || '?'} (${p.team_city || p.city || '?'})</p>
+          <p><strong>Numéro:</strong> ${p.jersey_number || '?'}</p>
+          <p><strong>Équipe:</strong> ${p.team_name || '?'} (${p.team_city || '?'})</p>
           <p><strong>Ligue:</strong> ${p.league || '?'}</p>
-          <p><strong>Position:</strong> ${p.primary_position_name || p.position || '?'}</p>
+          <p><strong>Position:</strong> ${p.primary_position_name || '?'}</p>
           <p><strong>Naissance:</strong> ${p.birthdate || '?'} à ${p.birth_place || '?'} (${p.birth_country || '?'})</p>
           <p><strong>Taille / Poids:</strong> ${p.height_cm || '?'} cm / ${p.weight_kg || '?'} kg</p>
           <p><strong>Main dominante:</strong> ${p.shoots_catches || '?'}</p>
@@ -123,7 +110,6 @@ $players = $pdo->query("SELECT * FROM players WHERE nationality='CHE' ORDER BY f
 
     map.addLayer(markers);
 
-    // Zoom automatique sur tous les marqueurs
     if (bounds.length > 0) {
       map.fitBounds(bounds, {padding:[50,50]});
     }
