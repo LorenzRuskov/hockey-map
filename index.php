@@ -26,8 +26,8 @@ try {
     die("Erreur DB: " . $e->getMessage());
 }
 
-// On récupère tous les joueurs suisses
-$players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+// Récupérer tous les joueurs suisses
+$players = $pdo->query("SELECT * FROM players WHERE nationality='CHE' ORDER BY full_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!doctype html>
 <html lang="fr">
@@ -83,16 +83,17 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
       if (!isNaN(lat) && !isNaN(lng)) {
         const popupHTML = `
           <div style="display:flex; align-items:center;">
-            <img src="${p.photo_url || 'https://via.placeholder.com/60'}" 
-                 alt="${p.name}" 
+            <img src="${p.headshot_url || p.photo_url || 'https://via.placeholder.com/60'}" 
+                 alt="${p.full_name || '?'}" 
                  style="width:60px; height:60px; object-fit:cover; border-radius:5px; margin-right:8px;">
             <div>
-              <b>${p.name || '?'}</b> (#${p.jersey_number || '?'})<br>
-              ${p.team || '?'} (${p.position || '?'})<br>
+              <b>${p.full_name || '?'}</b> (#${p.jersey_number || p.sweater_number || p.number || '?'})<br>
+              Équipe: ${p.team_name || p.team || '?'} (${p.team_city || p.city || '?'})<br>
+              Position: ${p.primary_position_name || p.position || '?'}<br>
               Ligue: ${p.league || '?'}<br>
               Taille: ${p.height_cm || '?'} cm, Poids: ${p.weight_kg || '?'} kg<br>
               Main dominante: ${p.shoots_catches || '?'}<br>
-              Naissance: ${p.birthdate || '?'} à ${p.birth_place || '?'}
+              Naissance: ${p.birthdate || '?'} à ${p.birth_place || '?'} (${p.birth_country || '?'})
             </div>
           </div>
         `;
@@ -105,13 +106,14 @@ $players = $pdo->query("SELECT * FROM players ORDER BY name ASC")->fetchAll(PDO:
       const div = document.createElement('div');
       div.className = 'player-card';
       div.innerHTML = `
-        <img src="${p.photo_url || 'https://via.placeholder.com/300x180?text=No+Image'}" alt="${p.name}">
+        <img src="${p.headshot_url || p.photo_url || 'https://via.placeholder.com/300x180?text=No+Image'}" alt="${p.full_name || '?'}">
         <div class="player-body">
-          <h3>${p.name || '?'} (#${p.jersey_number || '?'})</h3>
-          <p><strong>Équipe:</strong> ${p.team || '?'}</p>
+          <h3>${p.full_name || '?'}</h3>
+          <p><strong>Numéro:</strong> ${p.jersey_number || p.sweater_number || p.number || '?'}</p>
+          <p><strong>Équipe:</strong> ${p.team_name || p.team || '?'} (${p.team_city || p.city || '?'})</p>
           <p><strong>Ligue:</strong> ${p.league || '?'}</p>
-          <p><strong>Position:</strong> ${p.position || '?'}</p>
-          <p><strong>Naissance:</strong> ${p.birthdate || '?'} à ${p.birth_place || '?'}</p>
+          <p><strong>Position:</strong> ${p.primary_position_name || p.position || '?'}</p>
+          <p><strong>Naissance:</strong> ${p.birthdate || '?'} à ${p.birth_place || '?'} (${p.birth_country || '?'})</p>
           <p><strong>Taille / Poids:</strong> ${p.height_cm || '?'} cm / ${p.weight_kg || '?'} kg</p>
           <p><strong>Main dominante:</strong> ${p.shoots_catches || '?'}</p>
         </div>
